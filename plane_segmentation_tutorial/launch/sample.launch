@@ -1,0 +1,11 @@
+<!-- -->
+<launch>
+
+	<node pkg="plane_segmentation_tutorial" type="planefitting" name="planefitting">
+	</node>
+	
+	<node pkg="rviz" type="rviz" name="rviz" args="-d $(find plane_segmentation_tutorial)/launch/plane_seg.rviz"/>
+        
+</launch>
+
+	
