@@ -7,8 +7,11 @@
 
 #include <ros/ros.h>
 
+#include <pcl/common/common_headers.h>
 #include <pcl/point_cloud.h>
 #include <pcl/io/pcd_io.h>
+#include <pcl/visualization/pcl_visualizer.h>
+#include <boost/thread/thread.hpp>
 
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
@@ -24,6 +27,7 @@
 
 using namespace cv;
 using namespace std;
+
 /**
  * Load data for this assignment.
  * @param fname The JSON input filename.
@@ -241,10 +245,11 @@ void ComputeDisparity(const char* file_1,const char* file_2, cv::Mat& disp)
     file_name[strlen(output_1)-14] = '\0';
     strcat(file_name,"_disp.pgm");
     printf("NAME:::: %s  ",file_name);
-    disp = imread(file_name);
+    disp = imread(file_name,CV_LOAD_IMAGE_GRAYSCALE);   
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[])
+{
 
   if (argc < 4)
   {
@@ -279,10 +284,15 @@ int main(int argc, char *argv[]) {
   char ch = '1';
   for(size_t i =0;i<left_fnames.size();i++)
   {
-      //  cv::Mat left_r,left_p,right_r,right_p,Q,rot,trans;
+      //cout<<poses[i].rotation()<<endl;
+      //cout<<poses[i].translation();
+      cv::Mat left_r,left_p,right_r,right_p,Q,rot,trans;
+      eigen2cv(poses[i].rotation(),rot);
+      Eigen::Vector3d t = poses[i].translation();
+      eigen2cv(t,trans);
       // eigen2cv(poses[i].rotation().matrix(),rot);
       //  eigen2cv(poses[i].translation().matrix(),trans);
-      //  cv::stereoRectify(left_K,left_D,right_K,right_D,cv::Size(right_w,right_h),rot,trans,left_r,right_r,left_p,right_p,Q,CALIB_ZERO_DISPARITY);
+      cv::stereoRectify(left_K,left_D,right_K,right_D,cv::Size(right_w,right_h),rot,trans,left_r,right_r,left_p,right_p,Q,CALIB_ZERO_DISPARITY);
       cv::Mat left = cv::imread(left_fnames[i]);
       if (left.empty()) {
 	  std::cerr << "image not found.\n";
@@ -300,7 +310,8 @@ int main(int argc, char *argv[]) {
       // imshow("disp", disp);
       // waitKey(0);
 // etc.
-     
+      cv::Mat recons3D(disp.size(),CV_32FC3);
+//      cv::reprojectImageTo3D(disp,recons3D,Q,true,CV_32F);
       // finally compute the output point cloud from one or more stereo pairs.
       //
       // This is just a silly example of creating a colorized XYZ RGB point cloud.
@@ -311,6 +322,7 @@ int main(int argc, char *argv[]) {
 	  for (int j=0; j < disp.cols; ++j)
 	  {
 	      pcl::PointXYZRGB p;
+	      //cv::Vec3b xyzCoordinates(recons3D.at<cv::Vec3b>(i, j));
 	      p.x = j;
 	      p.y = i;
 	      p.z = disp.at<uchar>(i,j);
@@ -329,7 +341,7 @@ int main(int argc, char *argv[]) {
       name[strlen(name)]=ch;
       name[strlen(name)+1]='\0';
       strcat(name,".pcd");
-      w.writeBinaryCompressed(name, pc);
+      w.writeBinaryCompressed(name,pc);
       //pcl::io::savePCDBinaryCompressed("out.pcd", pc);
       ch++;
   }
